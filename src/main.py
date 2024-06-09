@@ -1,57 +1,40 @@
-# Code written by TRC Loop - 2024
-# For MCSLA
-import sys
-import os
-EXPORT_FORMATS = ["excel-csv", "excel-sheet", "json", "txt", "rtf"]
+import typer
+from rich import print
+from rich.prompt import Confirm
+from Scripts.ILib import *
+import os.path
+app = typer.Typer()
 
 
 
-
-def Questioning():
-    path = str(input("Enter the path to the file or folder: "))
-    format = str(input("Enter the export format: "))
-    return path, format
-
-def main(pathType: int, path: str, exportType: str):
-    # Check if type is 0 or 1 else exit
-    if pathType != 0 and pathType != 1:
-        print("Path type not supported")
-        sys.exit(1)
+@app.command()
+def analyze(log_path: str, export_format: FileType, export_path: str, verbose: bool = False, no_ask: bool = False):
+    LoadLog_spinner.start()
+    logtxt: str = ""
     
-    # Check if export type is supported
-    if exportType not in EXPORT_FORMATS:
-        print("Export type not supported, valid types are: " + str(EXPORT_FORMATS))
-        sys.exit(1)
+    LoadLog_spinner.info("Checking Path") if verbose else None
+    if not os.path.exists(log_path):
+        LoadLog_spinner.fail("Path not Found: " + log_path)
+        print("[bold red]Path not Found: [blue]" + log_path)
+        raise typer.Exit(code=1)
     
+    LoadLog_spinner.info("Checking if .log") if verbose else None
+    if not log_path.endswith(".log"):
+        LoadLog_spinner.warn("Not a .log file")
+        if not Confirm.ask("File does not end with .log, are you sure this is a valid file? "):
+            LoadLog_spinner.fail("Invalid File (UA)")
+            print("[bold red]Invalid File (User Aborted)")
+            raise typer.Exit(code=1)
+
+    LoadLog_spinner.info("Loading Log (Read)") if verbose else None
+    with open(log_path, "r") as file:
+        logtxt = file.read()
     
-    
+    LoadLog_spinner.succeed("Log Loaded")
+
+@app.command()
+def toFormat(file_path: str, export_format: FileType, verbose: bool = False):
+    print("Converting file: ", file_path, " to ", export_format)
 
 if __name__ == "__main__":
-    path = ""
-    format = ""
-    type = -1
-    if len(sys.argv) >= 3:
-        print("USAGE: python main.py <path> <format>")
-        print("path: path to the file or folder, format: export format: excel-csv, excel-sheet, json, txt, rtf")
-        print("Too many arguments")
-        sys.exit(1)
-        
-    if len(sys.argv) == 0:
-        path, format = Questioning()
-    if len(sys.argv) == 2:
-        path, format = sys.argv[1], sys.argv[2]
-       
-
-    # Check if path is a folder or a file and if it exists
-    if os.path.exists(path):
-        if os.path.isdir(path):
-            type = 1
-        else:
-            type = 0
-    else:
-        print("Path does not exist")
-        print("USAGE: python main.py <path> <format>")
-        print("path: path to the file or folder, format: export format: excel-csv, excel-sheet, json, txt, rtf")
-        sys.exit(1)
-    
-    main(type, path, format)
+    app()
